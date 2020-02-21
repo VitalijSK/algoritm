@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Img</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script>
+        const base64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASwAAAEsAQMAAABDsxw2AAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAZQTFRF//////8AeH4a4QAAACtJREFUeJztyrENAAAIA6Bu/n+xPmGiA8wkAAAAAAAnqjVtoQEAAAAAwHcD4bsPW7TTZbUAAAAASUVORK5CYII=';
+
+        function getTracing(base64) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext("2d");
+
+            const image = new Image();
+            const promise = new Promise((res, rej) => {
+                image.onload = function() {
+                    ctx.drawImage(image, 0, 0);
+                    const html = createHtmlByMatrix(ctx, image.width, image.height);
+                    res(html);
+                };
+            })
+
+            image.src = base64;
+
+            return promise
+        }
+
+        function createHtmlByMatrix(ctx, width, height) {
+            const matrix = {
+                start: {
+                    x: undefined,
+                    y: undefined
+                },
+                end: {
+                    x: 0,
+                    y: 0
+                }
+            };
+            let findColor = false;
+
+            for(let y = 0; y < height; y++) {
+                for(let x = 0; x < width; x++) {
+                    x = findColor ? matrix.start.x : x;
+
+                    const mapPix = ctx.getImageData(x, y, 1, 1).data;
+                    const red = mapPix[0];
+                    const green = mapPix[1];
+                    const blue = mapPix[2];
+
+                    if (!(red === 255 && green === 255 && blue === 255) && mapPix[3] !== 0) {
+                        matrix.color = mapPix;
+
+                        if (matrix.start.x === undefined)  {
+                            matrix.start.x = x;
+                        } else if (matrix.end.x < x)  {
+                            matrix.end.x = x;
+                        }
+
+                        if (matrix.start.y === undefined)  {
+                            matrix.start.y = y;
+                        } else if (matrix.end.y < y)  {
+                            matrix.end.y = y;
+                        }
+                    } else if (matrix.start.x !== undefined) {
+                        findColor = true;
+                    }
+
+                    if (findColor) {
+                        x = width;
+                    }
+
+                }
+            }
+
+            return `<div style="background-color: white">
+                <div style="width: ${matrix.end.x - matrix.start.x}px; height: ${(matrix.end.y - matrix.start.y)}px; position: absolute; left: ${matrix.start.x}px; top: ${matrix.start.y}px;
+                background-color: rgb(${matrix.color[0]}, ${matrix.color[1]}, ${matrix.color[2]}) "></div>
+            </div>`
+        }
+        const htmlTemplate = getTracing(base64);
+
+        htmlTemplate.then((res) => {
+            debugger
+            document.body.innerHTML = res;
+        })
+    </script>
+</head>
+<body>
+</body>
+</html>
